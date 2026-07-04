@@ -23,10 +23,14 @@ export interface TokenAuthContext {
   user: Doc<"users">;
 }
 
-// Decode JWT payload with basic validation
-// Note: Full signature verification requires the public key from Convex Auth
-// For now, we validate the claims (exp, iss, aud) which provides protection
-// against tampering since tokens are signed by Convex Auth
+// Decode JWT payload (no signature check - see below).
+//
+// Cryptographic signature verification happens once at the HTTP boundary
+// (convex/lib/jwt.ts, called from convex/http.ts) before a token is allowed
+// anywhere near business logic. The functions in convex/functions/ are
+// internal-only, so they can only be reached through that verified path;
+// the claims validation here (exp/iss/aud) is defense in depth, not the
+// primary protection.
 export function decodeJwtPayload(token: string): Record<string, unknown> | null {
   try {
     const parts = token.split(".");

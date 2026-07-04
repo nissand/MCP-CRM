@@ -1,4 +1,4 @@
-import { mutation, query } from "../_generated/server";
+import { internalMutation, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
 import {
@@ -17,7 +17,7 @@ import {
 import { notFound, validationError } from "../lib/errors";
 
 // Create a new contact
-export const create = mutation({
+export const create = internalMutation({
   args: {
     accountId: v.string(),
     firstName: v.string(),
@@ -70,7 +70,7 @@ export const create = mutation({
 });
 
 // Get a single contact by ID
-export const get = query({
+export const get = internalQuery({
   args: { id: v.string(), _token: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx, args._token);
@@ -80,7 +80,7 @@ export const get = query({
 });
 
 // List contacts with filters and pagination
-export const list = query({
+export const list = internalQuery({
   args: {
     accountId: v.optional(v.string()),
     includeDeleted: v.optional(v.boolean()),
@@ -139,7 +139,7 @@ export const list = query({
 });
 
 // Update a contact
-export const update = mutation({
+export const update = internalMutation({
   args: {
     id: v.string(),
     firstName: v.optional(v.string()),
@@ -184,7 +184,7 @@ export const update = mutation({
 });
 
 // Soft delete a contact
-export const remove = mutation({
+export const remove = internalMutation({
   args: { id: v.string(), _token: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx, args._token);
@@ -207,7 +207,7 @@ export const remove = mutation({
 });
 
 // Restore a soft-deleted contact
-export const restore = mutation({
+export const restore = internalMutation({
   args: { id: v.string(), _token: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx, args._token);

@@ -1,11 +1,11 @@
-import { query } from "../_generated/server";
+import { internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { getAuthContext } from "../lib/utils";
 import { validationError } from "../lib/errors";
 import { searchSchema } from "../lib/validators";
 
 // Unified search across all CRM entities
-export const search = query({
+export const search = internalQuery({
   args: {
     query: v.string(),
     entityTypes: v.optional(
@@ -186,7 +186,7 @@ function calculateScore(text: string, query: string): number {
 }
 
 // Get overdue items (tasks and reminders)
-export const getOverdueItems = query({
+export const getOverdueItems = internalQuery({
   args: {
     limit: v.optional(v.number()),
     _token: v.optional(v.string()),
@@ -251,7 +251,7 @@ export const getOverdueItems = query({
 });
 
 // Get upcoming items
-export const getUpcomingItems = query({
+export const getUpcomingItems = internalQuery({
   args: {
     days: v.optional(v.number()),
     limit: v.optional(v.number()),

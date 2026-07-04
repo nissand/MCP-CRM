@@ -1,10 +1,10 @@
-import { query } from "../_generated/server";
+import { internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { getAuthContext, paginateResults } from "../lib/utils";
 import { validationError } from "../lib/errors";
 
 // Get audit log entries (activity feed)
-export const list = query({
+export const list = internalQuery({
   args: {
     entityType: v.optional(
       v.union(
@@ -72,7 +72,7 @@ export const list = query({
 });
 
 // Get activity feed for an entity
-export const getEntityHistory = query({
+export const getEntityHistory = internalQuery({
   args: {
     entityType: v.union(
       v.literal("account"),
@@ -105,7 +105,7 @@ export const getEntityHistory = query({
 });
 
 // Get recent activity for current user
-export const getMyActivity = query({
+export const getMyActivity = internalQuery({
   args: {
     limit: v.optional(v.number()),
     _token: v.optional(v.string()),
@@ -125,7 +125,7 @@ export const getMyActivity = query({
 });
 
 // Get activity summary (for dashboard)
-export const getActivitySummary = query({
+export const getActivitySummary = internalQuery({
   args: {
     days: v.optional(v.number()),
     _token: v.optional(v.string()),

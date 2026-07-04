@@ -242,9 +242,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for conventions and a walkthrough of addi
 
 ## Security notes & known limitations
 
+- **JWT verification**: every inbound access token is cryptographically verified (RS256 signature against the deployment's JWKS, plus expiration/issuer/audience claims) at the HTTP boundary — see `convex/lib/jwt.ts`. Tokens signed with the wrong key, tampered payloads, and `alg=none` downgrades are all rejected with 401.
+- **Internal-only business logic**: all CRM functions are Convex `internal*` functions, so the verified HTTP layer (`convex/http.ts`) is the only public entry point — they cannot be invoked directly through the Convex client API with a forged token.
 - **Tenant isolation** is enforced in every function via `getAuthContext` + `verifyTenantAccess`; cross-tenant lookups return "not found".
-- **JWT validation**: access tokens are validated for expiration, issuer, and audience, but **cryptographic signature verification is not yet implemented** in the token path used by MCP calls (`convex/lib/tokenAuth.ts`). Treat deployments as unsuitable for sensitive production data until this is addressed.
 - **PKCE**: challenges are stored during the OAuth flow but verification is currently disabled in the token exchange (`convex/mcp/authCodes.ts`).
-- **Token lifetime**: tokens expire after ~1 hour; the refresh-token grant currently echoes the same token rather than minting a new one.
+- **Token lifetime**: tokens expire after ~1 hour. The refresh-token grant re-validates and echoes the same JWT rather than minting a new one, so OAuth clients re-authorize when the token expires.
 
-Contributions addressing any of these are very welcome — see the issues tracker.
+Contributions addressing the remaining limitations are very welcome — see the issues tracker.

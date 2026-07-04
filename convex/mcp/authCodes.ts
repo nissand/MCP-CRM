@@ -1,4 +1,4 @@
-import { mutation } from "../_generated/server";
+import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 
 // Generate a short random code
@@ -12,7 +12,7 @@ function generateCode(): string {
 }
 
 // Create an authorization code
-export const create = mutation({
+export const create = internalMutation({
   args: {
     token: v.string(),
     state: v.string(),
@@ -36,7 +36,7 @@ export const create = mutation({
 });
 
 // Exchange an authorization code for a token
-export const exchange = mutation({
+export const exchange = internalMutation({
   args: {
     code: v.string(),
     codeVerifier: v.optional(v.string()),
@@ -86,7 +86,7 @@ export const exchange = mutation({
 });
 
 // Clean up expired codes
-export const cleanup = mutation({
+export const cleanup = internalMutation({
   args: {},
   handler: async (ctx) => {
     const now = Date.now();

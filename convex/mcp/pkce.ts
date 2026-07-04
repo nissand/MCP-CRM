@@ -1,8 +1,8 @@
-import { mutation, query } from "../_generated/server";
+import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 
 // Store PKCE challenge during authorization
-export const store = mutation({
+export const store = internalMutation({
   args: {
     state: v.string(),
     codeChallenge: v.string(),
@@ -35,7 +35,7 @@ export const store = mutation({
 });
 
 // Lookup and verify PKCE challenge during token exchange
-export const verify = mutation({
+export const verify = internalMutation({
   args: {
     state: v.string(),
     codeVerifier: v.optional(v.string()),
@@ -90,7 +90,7 @@ export const verify = mutation({
 });
 
 // Clean up expired challenges
-export const cleanup = mutation({
+export const cleanup = internalMutation({
   args: {},
   handler: async (ctx) => {
     const now = Date.now();

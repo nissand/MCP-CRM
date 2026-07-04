@@ -1,4 +1,4 @@
-import { mutation, query } from "../_generated/server";
+import { internalMutation, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
 import {
@@ -17,7 +17,7 @@ import {
 import { notFound, validationError } from "../lib/errors";
 
 // Create a new reminder
-export const create = mutation({
+export const create = internalMutation({
   args: {
     title: v.string(),
     description: v.optional(v.string()),
@@ -105,7 +105,7 @@ async function verifyLinkedEntity(
 }
 
 // Get a single reminder by ID
-export const get = query({
+export const get = internalQuery({
   args: { id: v.string(), _token: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx, args._token);
@@ -115,7 +115,7 @@ export const get = query({
 });
 
 // List reminders with filters and pagination
-export const list = query({
+export const list = internalQuery({
   args: {
     assigneeId: v.optional(v.string()),
     linkedEntityType: v.optional(
@@ -206,7 +206,7 @@ export const list = query({
 });
 
 // Update a reminder
-export const update = mutation({
+export const update = internalMutation({
   args: {
     id: v.string(),
     title: v.optional(v.string()),
@@ -273,7 +273,7 @@ export const update = mutation({
 });
 
 // Soft delete a reminder
-export const remove = mutation({
+export const remove = internalMutation({
   args: { id: v.string(), _token: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx, args._token);
@@ -296,7 +296,7 @@ export const remove = mutation({
 });
 
 // Restore a soft-deleted reminder
-export const restore = mutation({
+export const restore = internalMutation({
   args: { id: v.string(), _token: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx, args._token);
@@ -322,7 +322,7 @@ export const restore = mutation({
 });
 
 // Get overdue reminders
-export const getOverdue = query({
+export const getOverdue = internalQuery({
   args: {
     limit: v.optional(v.number()),
     _token: v.optional(v.string()),

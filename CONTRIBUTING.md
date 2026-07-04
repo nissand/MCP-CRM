@@ -27,21 +27,22 @@ npm run dev
 
 An MCP tool call flows through three layers:
 
-1. **`convex/http.ts`** receives the HTTP request on `/mcp`, extracts the Bearer token, and hands the JSON-RPC body to the dispatcher.
+1. **`convex/http.ts`** receives the HTTP request on `/mcp`, extracts the Bearer token, and **cryptographically verifies it** (`convex/lib/jwt.ts`: RS256 signature against the deployment JWKS + exp/iss/aud claims) before handing the JSON-RPC body to the dispatcher.
 2. **`convex/mcp/server.ts`** routes `tools/call` to a Convex function using the `TOOL_HANDLERS` registry; tool *definitions* (what clients see in `tools/list`) live in `convex/mcp/tools/`.
-3. **`convex/functions/*.ts`** implement the business logic. Every handler starts with `getAuthContext(ctx, args._token)` which resolves the user + tenant, and all reads/writes are scoped to `auth.tenantId`.
+3. **`convex/functions/*.ts`** implement the business logic as **internal-only** Convex functions (`internalQuery`/`internalMutation`) — they are not callable from the public Convex client API, only via the verified HTTP layer. Every handler starts with `getAuthContext(ctx, args._token)` which resolves the user + tenant, and all reads/writes are scoped to `auth.tenantId`.
 
 ## Adding a new MCP tool
 
 Three steps, all typechecked:
 
 1. **Implement the Convex function** in the right module under `convex/functions/`. Follow the existing patterns:
+   - Use `internalQuery`/`internalMutation` (not the public `query`/`mutation`) — the MCP HTTP layer is the only intended caller.
    - Accept `_token: v.optional(v.string())` and call `getAuthContext(ctx, args._token)` first.
    - Verify tenant ownership of any entity you touch with `verifyTenantAccess`.
    - Log writes with `logAudit` / `withAudit`.
    - Use the error helpers from `convex/lib/errors.ts` (`notFound`, `validationError`, …) — they serialize cleanly into MCP error responses.
 2. **Add the tool definition** (name, description, JSON input schema) to the matching file in `convex/mcp/tools/`. Write descriptions for an LLM audience: say what the tool does, when to use it, and what it returns.
-3. **Register the handler** in `TOOL_HANDLERS` in `convex/mcp/server.ts`, mapping the tool name to your function with the correct `kind` (`query` or `mutation`).
+3. **Register the handler** in `TOOL_HANDLERS` in `convex/mcp/server.ts`, mapping the tool name to your function (`internal.functions.<module>.<name>`) with the correct `kind` (`query` or `mutation`).
 
 Test it end-to-end with curl (see "Calling a tool manually" in the README) or through a connected Claude session.
 

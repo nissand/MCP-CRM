@@ -1,4 +1,4 @@
-import { mutation, query } from "../_generated/server";
+import { internalMutation, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
 import {
@@ -19,7 +19,7 @@ import {
 import { ErrorCodes } from "../lib/errors";
 
 // Invite a new user (admin only)
-export const invite = mutation({
+export const invite = internalMutation({
   args: {
     email: v.string(),
     name: v.string(),
@@ -80,7 +80,7 @@ export const invite = mutation({
 });
 
 // List users in tenant
-export const list = query({
+export const list = internalQuery({
   args: {
     includeInactive: v.optional(v.boolean()),
     cursor: v.optional(v.string()),
@@ -120,7 +120,7 @@ export const list = query({
 });
 
 // Get a single user
-export const get = query({
+export const get = internalQuery({
   args: { id: v.string(), _token: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx, args._token);
@@ -135,7 +135,7 @@ export const get = query({
 });
 
 // Deactivate a user (admin only)
-export const deactivate = mutation({
+export const deactivate = internalMutation({
   args: { id: v.string(), _token: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx, args._token);
@@ -178,7 +178,7 @@ export const deactivate = mutation({
 });
 
 // Reactivate a user (admin only)
-export const reactivate = mutation({
+export const reactivate = internalMutation({
   args: { id: v.string(), _token: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx, args._token);
@@ -205,7 +205,7 @@ export const reactivate = mutation({
 });
 
 // Update user role (admin only)
-export const updateRole = mutation({
+export const updateRole = internalMutation({
   args: {
     id: v.string(),
     role: v.union(v.literal("admin"), v.literal("member")),
@@ -252,7 +252,7 @@ export const updateRole = mutation({
 });
 
 // Get current user
-export const me = query({
+export const me = internalQuery({
   args: { _token: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx, args._token);

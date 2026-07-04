@@ -1,7 +1,8 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { handleMCPRequest } from "./mcp/server";
-import { api } from "./_generated/api";
+import { internal } from "./_generated/api";
+import { verifyAccessToken } from "./lib/jwt";
 
 const http = httpRouter();
 
@@ -154,7 +155,7 @@ const handleAuthorize = httpAction(async (ctx, request) => {
 
   // Store PKCE challenge if provided
   if (state && codeChallenge) {
-    await ctx.runMutation(api.mcp.pkce.store, {
+    await ctx.runMutation(internal.mcp.pkce.store, {
       state,
       codeChallenge,
       codeChallengeMethod,
@@ -204,7 +205,7 @@ const handleToken = httpAction(async (ctx, request) => {
   if (body.grant_type === "authorization_code" && body.code) {
     try {
       // Exchange the short auth code for the JWT token
-      const result = await ctx.runMutation(api.mcp.authCodes.exchange, {
+      const result = await ctx.runMutation(internal.mcp.authCodes.exchange, {
         code: body.code,
         codeVerifier: body.code_verifier,
       });
@@ -234,8 +235,20 @@ const handleToken = httpAction(async (ctx, request) => {
     }
   }
 
-  // Handle refresh_token grant
+  // Handle refresh_token grant. The refresh token is the JWT itself, so this
+  // can only extend a session while the JWT is still valid - once it expires
+  // the client must re-authorize.
   if (body.grant_type === "refresh_token" && body.refresh_token) {
+    if (!(await verifyAccessToken(body.refresh_token))) {
+      return new Response(
+        JSON.stringify({
+          error: "invalid_grant",
+          error_description: "Refresh token is invalid or expired. Please re-authenticate.",
+        }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     return new Response(
       JSON.stringify({
         access_token: body.refresh_token,
@@ -293,6 +306,24 @@ function getToken(request: Request): string | null {
   return tokenFromQuery || tokenFromHeader;
 }
 
+// Extract the token from a request and cryptographically verify it.
+// Returns { token } when a valid token is present, { token: null } when no
+// token was sent, and { invalid: true } when a token was sent but failed
+// verification (bad signature, expired, wrong issuer/audience).
+async function getVerifiedToken(
+  request: Request
+): Promise<{ token: string | null; invalid?: boolean }> {
+  const rawToken = getToken(request);
+  if (!rawToken) {
+    return { token: null };
+  }
+  const claims = await verifyAccessToken(rawToken);
+  if (!claims) {
+    return { token: null, invalid: true };
+  }
+  return { token: rawToken };
+}
+
 // CORS preflight handler
 http.route({
   path: "/mcp",
@@ -313,11 +344,29 @@ http.route({
   path: "/mcp",
   method: "GET",
   handler: httpAction(async (ctx, request) => {
-    const token = getToken(request);
+    const { token, invalid } = await getVerifiedToken(request);
 
     // Check if this is a browser request (Accept header contains text/html)
     const acceptHeader = request.headers.get("Accept") || "";
     const isBrowser = acceptHeader.includes("text/html");
+
+    // A token was sent but failed verification - reject it explicitly
+    if (invalid) {
+      return new Response(
+        JSON.stringify({
+          error: "invalid_token",
+          message: "Access token is invalid or expired. Please re-authenticate.",
+        }),
+        {
+          status: 401,
+          headers: {
+            "Content-Type": "application/json",
+            "WWW-Authenticate": `Bearer resource_metadata="${siteUrl()}/.well-known/oauth-protected-resource"`,
+            ...corsHeaders,
+          },
+        }
+      );
+    }
 
     // If no token and browser request, redirect to auth app (not Claude's callback!)
     if (!token && isBrowser) {
@@ -382,7 +431,7 @@ http.route({
   method: "POST",
   handler: httpAction(async (ctx, request) => {
     try {
-      const token = getToken(request);
+      const { token, invalid } = await getVerifiedToken(request);
 
       // Get or generate session ID
       const clientSessionId = request.headers.get("Mcp-Session-Id");
@@ -403,15 +452,18 @@ http.route({
       const publicMethods = ["initialize", "tools/list", "ping"];
       const isPublicMethod = publicMethods.includes(body.method);
 
-      // If no token and not a public method, return 401 to trigger OAuth
-      if (!token && !isPublicMethod) {
+      // If the token failed verification, or none was sent for a protected
+      // method, return 401 to trigger (re-)authentication
+      if ((invalid || !token) && !isPublicMethod) {
         return new Response(
           JSON.stringify({
             jsonrpc: "2.0",
             id: body.id ?? null,
             error: {
               code: -32001,
-              message: "Authentication required",
+              message: invalid
+                ? "Access token is invalid or expired"
+                : "Authentication required",
             },
           }),
           {
@@ -490,8 +542,20 @@ http.route({
     const url = new URL(request.url);
     const token = url.searchParams.get("token") || "";
 
+    // Verify the token before binding it to a session. Sessions without a
+    // token are still allowed - they can only call public methods.
+    if (token && !(await verifyAccessToken(token))) {
+      return new Response(
+        JSON.stringify({
+          error: "invalid_token",
+          message: "Access token is invalid or expired. Please re-authenticate.",
+        }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     // Create a session in the database and get a short session ID
-    const sessionId = await ctx.runMutation(api.mcp.sessions.create, { token });
+    const sessionId = await ctx.runMutation(internal.mcp.sessions.create, { token });
 
     // Return relative path like Brightdata does
     const body = [
@@ -541,12 +605,18 @@ http.route({
       // Look up token from session ID in database
       let token: string | null = null;
       if (sessionId) {
-        token = await ctx.runQuery(api.mcp.sessions.lookup, { sessionId });
+        token = await ctx.runQuery(internal.mcp.sessions.lookup, { sessionId });
       }
 
       // Also check Authorization header as fallback
       if (!token) {
         token = getToken(request);
+      }
+
+      // Verify whatever token we resolved; an invalid or expired token is
+      // treated as unauthenticated (the JWT may have expired mid-session)
+      if (token && !(await verifyAccessToken(token))) {
+        token = null;
       }
 
       const body = await request.json();
@@ -608,7 +678,15 @@ http.route({
         );
       }
 
-      const code = await ctx.runMutation(api.mcp.authCodes.create, {
+      // Only mint authorization codes for tokens this deployment issued
+      if (!(await verifyAccessToken(token))) {
+        return new Response(
+          JSON.stringify({ error: "Invalid or expired token" }),
+          { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
+      const code = await ctx.runMutation(internal.mcp.authCodes.create, {
         token,
         state: state || "",
       });

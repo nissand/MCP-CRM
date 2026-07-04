@@ -1,5 +1,5 @@
 import { ActionCtx } from "../_generated/server";
-import { api } from "../_generated/api";
+import { internal } from "../_generated/api";
 import { formatError, CRMError } from "../lib/errors";
 import { allTools } from "./tools";
 
@@ -54,58 +54,58 @@ type ToolHandler = {
 
 const TOOL_HANDLERS: Record<string, ToolHandler> = {
   // Accounts
-  create_account: { kind: "mutation", fn: api.functions.accounts.create },
-  get_account: { kind: "query", fn: api.functions.accounts.get },
-  list_accounts: { kind: "query", fn: api.functions.accounts.list },
-  update_account: { kind: "mutation", fn: api.functions.accounts.update },
-  delete_account: { kind: "mutation", fn: api.functions.accounts.remove },
-  restore_account: { kind: "mutation", fn: api.functions.accounts.restore },
+  create_account: { kind: "mutation", fn: internal.functions.accounts.create },
+  get_account: { kind: "query", fn: internal.functions.accounts.get },
+  list_accounts: { kind: "query", fn: internal.functions.accounts.list },
+  update_account: { kind: "mutation", fn: internal.functions.accounts.update },
+  delete_account: { kind: "mutation", fn: internal.functions.accounts.remove },
+  restore_account: { kind: "mutation", fn: internal.functions.accounts.restore },
 
   // Contacts
-  create_contact: { kind: "mutation", fn: api.functions.contacts.create },
-  get_contact: { kind: "query", fn: api.functions.contacts.get },
-  list_contacts: { kind: "query", fn: api.functions.contacts.list },
-  update_contact: { kind: "mutation", fn: api.functions.contacts.update },
-  delete_contact: { kind: "mutation", fn: api.functions.contacts.remove },
-  restore_contact: { kind: "mutation", fn: api.functions.contacts.restore },
+  create_contact: { kind: "mutation", fn: internal.functions.contacts.create },
+  get_contact: { kind: "query", fn: internal.functions.contacts.get },
+  list_contacts: { kind: "query", fn: internal.functions.contacts.list },
+  update_contact: { kind: "mutation", fn: internal.functions.contacts.update },
+  delete_contact: { kind: "mutation", fn: internal.functions.contacts.remove },
+  restore_contact: { kind: "mutation", fn: internal.functions.contacts.restore },
 
   // Opportunities
-  create_opportunity: { kind: "mutation", fn: api.functions.opportunities.create },
-  get_opportunity: { kind: "query", fn: api.functions.opportunities.get },
-  list_opportunities: { kind: "query", fn: api.functions.opportunities.list },
-  update_opportunity: { kind: "mutation", fn: api.functions.opportunities.update },
-  delete_opportunity: { kind: "mutation", fn: api.functions.opportunities.remove },
-  restore_opportunity: { kind: "mutation", fn: api.functions.opportunities.restore },
+  create_opportunity: { kind: "mutation", fn: internal.functions.opportunities.create },
+  get_opportunity: { kind: "query", fn: internal.functions.opportunities.get },
+  list_opportunities: { kind: "query", fn: internal.functions.opportunities.list },
+  update_opportunity: { kind: "mutation", fn: internal.functions.opportunities.update },
+  delete_opportunity: { kind: "mutation", fn: internal.functions.opportunities.remove },
+  restore_opportunity: { kind: "mutation", fn: internal.functions.opportunities.restore },
 
   // Tasks
-  create_task: { kind: "mutation", fn: api.functions.tasks.create },
-  get_task: { kind: "query", fn: api.functions.tasks.get },
-  list_tasks: { kind: "query", fn: api.functions.tasks.list },
-  update_task: { kind: "mutation", fn: api.functions.tasks.update },
-  delete_task: { kind: "mutation", fn: api.functions.tasks.remove },
-  restore_task: { kind: "mutation", fn: api.functions.tasks.restore },
+  create_task: { kind: "mutation", fn: internal.functions.tasks.create },
+  get_task: { kind: "query", fn: internal.functions.tasks.get },
+  list_tasks: { kind: "query", fn: internal.functions.tasks.list },
+  update_task: { kind: "mutation", fn: internal.functions.tasks.update },
+  delete_task: { kind: "mutation", fn: internal.functions.tasks.remove },
+  restore_task: { kind: "mutation", fn: internal.functions.tasks.restore },
 
   // Reminders
-  create_reminder: { kind: "mutation", fn: api.functions.reminders.create },
-  get_reminder: { kind: "query", fn: api.functions.reminders.get },
-  list_reminders: { kind: "query", fn: api.functions.reminders.list },
-  update_reminder: { kind: "mutation", fn: api.functions.reminders.update },
-  delete_reminder: { kind: "mutation", fn: api.functions.reminders.remove },
-  restore_reminder: { kind: "mutation", fn: api.functions.reminders.restore },
+  create_reminder: { kind: "mutation", fn: internal.functions.reminders.create },
+  get_reminder: { kind: "query", fn: internal.functions.reminders.get },
+  list_reminders: { kind: "query", fn: internal.functions.reminders.list },
+  update_reminder: { kind: "mutation", fn: internal.functions.reminders.update },
+  delete_reminder: { kind: "mutation", fn: internal.functions.reminders.remove },
+  restore_reminder: { kind: "mutation", fn: internal.functions.reminders.restore },
 
   // Search & analytics
-  search_crm: { kind: "query", fn: api.functions.search.search },
-  get_pipeline_summary: { kind: "query", fn: api.functions.opportunities.getPipelineSummary },
-  get_activity_feed: { kind: "query", fn: api.functions.auditLog.list },
-  get_overdue_items: { kind: "query", fn: api.functions.search.getOverdueItems },
+  search_crm: { kind: "query", fn: internal.functions.search.search },
+  get_pipeline_summary: { kind: "query", fn: internal.functions.opportunities.getPipelineSummary },
+  get_activity_feed: { kind: "query", fn: internal.functions.auditLog.list },
+  get_overdue_items: { kind: "query", fn: internal.functions.search.getOverdueItems },
 
   // Admin
-  get_tenant: { kind: "query", fn: api.functions.tenants.get },
-  update_tenant: { kind: "mutation", fn: api.functions.tenants.update },
-  invite_user: { kind: "mutation", fn: api.functions.users.invite },
-  list_users: { kind: "query", fn: api.functions.users.list },
-  deactivate_user: { kind: "mutation", fn: api.functions.users.deactivate },
-  reactivate_user: { kind: "mutation", fn: api.functions.users.reactivate },
+  get_tenant: { kind: "query", fn: internal.functions.tenants.get },
+  update_tenant: { kind: "mutation", fn: internal.functions.tenants.update },
+  invite_user: { kind: "mutation", fn: internal.functions.users.invite },
+  list_users: { kind: "query", fn: internal.functions.users.list },
+  deactivate_user: { kind: "mutation", fn: internal.functions.users.deactivate },
+  reactivate_user: { kind: "mutation", fn: internal.functions.users.reactivate },
 };
 
 // Handle JSON-RPC request

@@ -1,4 +1,4 @@
-import { mutation, query } from "../_generated/server";
+import { internalMutation, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
 import {
@@ -17,7 +17,7 @@ import {
 import { hasDependencies, notFound, validationError } from "../lib/errors";
 
 // Create a new account
-export const create = mutation({
+export const create = internalMutation({
   args: {
     name: v.string(),
     industry: v.optional(v.string()),
@@ -68,7 +68,7 @@ export const create = mutation({
 });
 
 // Get a single account by ID
-export const get = query({
+export const get = internalQuery({
   args: { id: v.string(), _token: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx, args._token);
@@ -78,7 +78,7 @@ export const get = query({
 });
 
 // List accounts with filters and pagination
-export const list = query({
+export const list = internalQuery({
   args: {
     industry: v.optional(v.string()),
     ownerId: v.optional(v.string()),
@@ -129,7 +129,7 @@ export const list = query({
 });
 
 // Update an account
-export const update = mutation({
+export const update = internalMutation({
   args: {
     id: v.string(),
     name: v.optional(v.string()),
@@ -183,7 +183,7 @@ export const update = mutation({
 });
 
 // Soft delete an account
-export const remove = mutation({
+export const remove = internalMutation({
   args: {
     id: v.string(),
     force: v.optional(v.boolean()),
@@ -240,7 +240,7 @@ export const remove = mutation({
 });
 
 // Restore a soft-deleted account
-export const restore = mutation({
+export const restore = internalMutation({
   args: { id: v.string(), _token: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx, args._token);

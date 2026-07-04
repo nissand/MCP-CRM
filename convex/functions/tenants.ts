@@ -1,4 +1,4 @@
-import { mutation, query } from "../_generated/server";
+import { internalMutation, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import {
   getAuthContext,
@@ -10,7 +10,7 @@ import { updateTenantSchema } from "../lib/validators";
 import { notFound, validationError } from "../lib/errors";
 
 // Get current tenant
-export const get = query({
+export const get = internalQuery({
   args: { _token: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx, args._token);
@@ -25,7 +25,7 @@ export const get = query({
 });
 
 // Update tenant settings (admin only)
-export const update = mutation({
+export const update = internalMutation({
   args: {
     name: v.optional(v.string()),
     settings: v.optional(
@@ -83,7 +83,7 @@ export const update = mutation({
 });
 
 // Get opportunity stages for current tenant
-export const getOpportunityStages = query({
+export const getOpportunityStages = internalQuery({
   args: { _token: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const auth = await getAuthContext(ctx, args._token);

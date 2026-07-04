@@ -1,4 +1,4 @@
-import { mutation, query } from "../_generated/server";
+import { internalMutation, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 
 // Generate a short UUID-like session ID
@@ -15,7 +15,7 @@ function generateShortId(): string {
 }
 
 // Create a new MCP session
-export const create = mutation({
+export const create = internalMutation({
   args: {
     token: v.string(),
   },
@@ -37,7 +37,7 @@ export const create = mutation({
 });
 
 // Look up a session by ID
-export const lookup = query({
+export const lookup = internalQuery({
   args: {
     sessionId: v.string(),
   },
@@ -61,7 +61,7 @@ export const lookup = query({
 });
 
 // Clean up expired sessions (can be called periodically)
-export const cleanup = mutation({
+export const cleanup = internalMutation({
   args: {},
   handler: async (ctx) => {
     const now = Date.now();
