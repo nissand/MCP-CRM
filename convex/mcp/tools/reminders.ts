@@ -1,4 +1,4 @@
-import { ToolDefinition } from "../server";
+import { ToolDefinition } from "./types";
 
 export const reminderTools: ToolDefinition[] = [
   {

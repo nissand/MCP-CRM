@@ -3,21 +3,32 @@
 /**
  * MCP Stdio-to-HTTP Proxy
  *
- * This script acts as a bridge between Claude Desktop (which uses stdio)
- * and the remote MCP-CRM HTTP server.
+ * This script acts as a bridge between stdio-only MCP clients (e.g. older
+ * Claude Desktop versions) and the remote MCP-CRM HTTP server.
  *
  * Usage:
- *   MCP_CRM_TOKEN="your-token" node index.js
+ *   MCP_CRM_URL="https://<deployment>.convex.site/mcp" \
+ *   MCP_CRM_TOKEN="your-token" \
+ *   node index.js
+ *
+ * Get your token by signing in to the auth app (see the project README).
  */
 
-const MCP_SERVER_URL = "https://rare-sturgeon-827.convex.site/mcp";
-
-// Read token from environment
+const MCP_SERVER_URL = process.env.MCP_CRM_URL;
 const TOKEN = process.env.MCP_CRM_TOKEN;
+
+if (!MCP_SERVER_URL) {
+  process.stderr.write(
+    "MCP_CRM_URL environment variable is required, e.g. https://<deployment>.convex.site/mcp\n"
+  );
+  process.exit(1);
+}
 
 if (!TOKEN) {
   // Can't send error without a request - just exit
-  process.stderr.write("MCP_CRM_TOKEN environment variable is required. Get your token from https://mcp-crm.vercel.app/\n");
+  process.stderr.write(
+    "MCP_CRM_TOKEN environment variable is required. Sign in to the auth app to get your token.\n"
+  );
   process.exit(1);
 }
 

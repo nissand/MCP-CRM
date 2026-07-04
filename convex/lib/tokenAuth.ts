@@ -2,9 +2,18 @@ import { QueryCtx, MutationCtx } from "../_generated/server";
 import { Doc, Id } from "../_generated/dataModel";
 import { unauthorized, forbidden } from "./errors";
 
-// Expected issuer for Convex Auth tokens
-const EXPECTED_ISSUER = "https://rare-sturgeon-827.convex.site";
+// Expected audience for Convex Auth tokens (matches auth.config.ts applicationID)
 const EXPECTED_AUDIENCE = "convex";
+
+// Expected issuer for Convex Auth tokens - the deployment's .convex.site URL.
+// CONVEX_SITE_URL is provided automatically by Convex.
+function expectedIssuer(): string {
+  const url = process.env.CONVEX_SITE_URL;
+  if (!url) {
+    throw new Error("CONVEX_SITE_URL environment variable is not set");
+  }
+  return url;
+}
 
 // Auth context returned from token authentication
 export interface TokenAuthContext {
@@ -48,7 +57,7 @@ export function validateJwtClaims(payload: Record<string, unknown>): { valid: bo
 
   // Check issuer
   const iss = payload.iss as string | undefined;
-  if (iss !== EXPECTED_ISSUER) {
+  if (iss !== expectedIssuer()) {
     return { valid: false, error: "Invalid token issuer" };
   }
 
@@ -87,7 +96,7 @@ export async function getAuthContextFromToken(
   token: string | null | undefined
 ): Promise<TokenAuthContext> {
   if (!token) {
-    unauthorized("Missing authentication token. Please sign in at https://mcp-crm.vercel.app/");
+    unauthorized("Missing authentication token. Please sign in via the auth app to obtain a token.");
   }
 
   // This will throw if token is invalid or expired

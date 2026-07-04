@@ -1,3 +1,4 @@
+import type { ToolDefinition } from "./types";
 import { accountTools } from "./accounts";
 import { contactTools } from "./contacts";
 import { opportunityTools } from "./opportunities";
@@ -6,7 +7,9 @@ import { reminderTools } from "./reminders";
 import { searchTools } from "./search";
 import { adminTools } from "./admin";
 
-export const allTools = [
+export type { ToolDefinition };
+
+export const allTools: ToolDefinition[] = [
   ...accountTools,
   ...contactTools,
   ...opportunityTools,

@@ -1,17 +1,17 @@
 {
   "name": "mcp-crm",
   "version": "1.0.0",
-  "description": "Headless CRM system with MCP interface and Convex backend",
+  "description": "Headless multi-tenant CRM exposed as MCP tools, built on Convex",
   "type": "module",
   "scripts": {
     "dev": "convex dev",
-    "build": "tsc",
+    "deploy": "convex deploy",
+    "codegen": "convex codegen",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
     "@auth/core": "^0.37.4",
     "@convex-dev/auth": "^0.0.80",
-    "@modelcontextprotocol/sdk": "^1.0.4",
     "convex": "^1.17.4",
     "zod": "^3.24.1"
   },

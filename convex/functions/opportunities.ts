@@ -5,6 +5,7 @@ import {
   getAuthContext,
   verifyTenantAccess,
   withAudit,
+  logAudit,
   paginateResults,
   now,
 } from "../lib/utils";
@@ -88,29 +89,8 @@ export const create = mutation({
       updatedAt: timestamp,
     };
 
-    const opportunityId = await withAudit(
-      ctx,
-      auth,
-      "create",
-      "opportunity",
-      "pending",
-      async () => {
-        return await ctx.db.insert("opportunities", opportunityData);
-      }
-    );
-
-    // Update audit log with actual ID
-    const auditLog = await ctx.db
-      .query("auditLogs")
-      .withIndex("by_entity", (q) =>
-        q.eq("entityType", "opportunity").eq("entityId", "pending")
-      )
-      .order("desc")
-      .first();
-
-    if (auditLog) {
-      await ctx.db.patch(auditLog._id, { entityId: opportunityId });
-    }
+    const opportunityId = await ctx.db.insert("opportunities", opportunityData);
+    await logAudit(ctx, auth, "create", "opportunity", opportunityId);
 
     return await ctx.db.get(opportunityId);
   },

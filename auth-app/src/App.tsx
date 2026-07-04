@@ -2,8 +2,14 @@ import { useAuthActions, useAuthToken } from "@convex-dev/auth/react";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import { useState, useEffect } from "react";
 
-// API URL for creating auth codes
-const API_URL = "https://rare-sturgeon-827.convex.site";
+// The Convex deployment's HTTP actions URL (the .convex.site one), used for
+// the OAuth code endpoint and shown to users in the MCP connection snippets.
+const API_URL = import.meta.env.VITE_CONVEX_SITE_URL;
+if (!API_URL) {
+  throw new Error(
+    "VITE_CONVEX_SITE_URL is not set. Copy .env.example to .env.local and fill in your Convex site URL."
+  );
+}
 
 // OAuth params storage key
 const OAUTH_STORAGE_KEY = "mcp_oauth_params";
@@ -167,7 +173,7 @@ function TokenDisplay() {
     "mcpServers": {
       "mcp-crm": {
         "type": "http",
-        "url": "https://rare-sturgeon-827.convex.site/mcp",
+        "url": `${API_URL}/mcp`,
         "headers": {
           "Authorization": `Bearer ${token || "YOUR_TOKEN_HERE"}`
         }
@@ -176,7 +182,7 @@ function TokenDisplay() {
   }, null, 2);
 
   // For Claude Cowork custom connector - URL with token as fallback
-  const claudeCoworkUrl = `https://rare-sturgeon-827.convex.site/mcp?token=${token || "YOUR_TOKEN_HERE"}`;
+  const claudeCoworkUrl = `${API_URL}/mcp?token=${token || "YOUR_TOKEN_HERE"}`;
 
   return (
     <div className="bg-white p-8 rounded-lg shadow-md max-w-2xl w-full mx-4">

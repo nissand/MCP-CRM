@@ -5,9 +5,30 @@ import { api } from "./_generated/api";
 
 const http = httpRouter();
 
-// Base URL for this Convex deployment
-const BASE_URL = "https://rare-sturgeon-827.convex.site";
-const AUTH_APP_URL = "https://mcp-crm.vercel.app";
+// Deployment URLs are read from environment variables so any Convex
+// deployment can run this code without modification:
+// - CONVEX_SITE_URL is provided automatically by Convex (the .convex.site URL).
+// - SITE_URL is the auth app's URL, required by Convex Auth. AUTH_APP_URL can
+//   override it if the auth app is hosted somewhere else:
+//   npx convex env set SITE_URL https://your-auth-app.example.com
+function siteUrl(): string {
+  const url = process.env.CONVEX_SITE_URL;
+  if (!url) {
+    throw new Error("CONVEX_SITE_URL environment variable is not set");
+  }
+  return url;
+}
+
+function authAppUrl(): string {
+  const url = process.env.AUTH_APP_URL || process.env.SITE_URL;
+  if (!url) {
+    throw new Error(
+      "Neither AUTH_APP_URL nor SITE_URL is set. " +
+        "Run: npx convex env set SITE_URL <your-auth-app-url>"
+    );
+  }
+  return url;
+}
 
 // MCP Protocol Version (Streamable HTTP Transport)
 const MCP_PROTOCOL_VERSION = "2025-03-26";
@@ -35,6 +56,7 @@ http.route({
   path: "/.well-known/oauth-protected-resource",
   method: "GET",
   handler: httpAction(async () => {
+    const BASE_URL = siteUrl();
     return new Response(
       JSON.stringify({
         resource: `${BASE_URL}/mcp`,
@@ -72,6 +94,7 @@ http.route({
   path: "/.well-known/oauth-authorization-server",
   method: "GET",
   handler: httpAction(async () => {
+    const BASE_URL = siteUrl();
     return new Response(
       JSON.stringify({
         issuer: BASE_URL,
@@ -139,15 +162,15 @@ const handleAuthorize = httpAction(async (ctx, request) => {
     });
   }
 
-  const authAppUrl = new URL(AUTH_APP_URL);
-  authAppUrl.searchParams.set("oauth_redirect_uri", redirectUri);
-  authAppUrl.searchParams.set("oauth_state", state);
-  if (codeChallenge) authAppUrl.searchParams.set("oauth_code_challenge", codeChallenge);
-  if (codeChallengeMethod) authAppUrl.searchParams.set("oauth_code_challenge_method", codeChallengeMethod);
+  const signInUrl = new URL(authAppUrl());
+  signInUrl.searchParams.set("oauth_redirect_uri", redirectUri);
+  signInUrl.searchParams.set("oauth_state", state);
+  if (codeChallenge) signInUrl.searchParams.set("oauth_code_challenge", codeChallenge);
+  if (codeChallengeMethod) signInUrl.searchParams.set("oauth_code_challenge_method", codeChallengeMethod);
 
   return new Response(null, {
     status: 302,
-    headers: { Location: authAppUrl.toString(), ...corsHeaders },
+    headers: { Location: signInUrl.toString(), ...corsHeaders },
   });
 });
 
@@ -285,18 +308,6 @@ http.route({
   }),
 });
 
-// Alias for /v1/mcp (fresh URL to avoid Claude caching issues)
-http.route({
-  path: "/v1/mcp",
-  method: "OPTIONS",
-  handler: httpAction(async () => {
-    return new Response(null, {
-      status: 204,
-      headers: corsHeaders,
-    });
-  }),
-});
-
 // MCP endpoint - GET (for SSE streams or server info)
 http.route({
   path: "/mcp",
@@ -313,7 +324,7 @@ http.route({
       return new Response(null, {
         status: 302,
         headers: {
-          Location: AUTH_APP_URL,
+          Location: authAppUrl(),
           ...corsHeaders,
         },
       });
@@ -330,7 +341,7 @@ http.route({
           status: 401,
           headers: {
             "Content-Type": "application/json",
-            "WWW-Authenticate": `Bearer resource_metadata="${BASE_URL}/.well-known/oauth-protected-resource"`,
+            "WWW-Authenticate": `Bearer resource_metadata="${siteUrl()}/.well-known/oauth-protected-resource"`,
             ...corsHeaders,
           },
         }
@@ -407,7 +418,7 @@ http.route({
             status: 401,
             headers: {
               ...mcpHeaders,
-              "WWW-Authenticate": `Bearer resource_metadata="${BASE_URL}/.well-known/oauth-protected-resource"`,
+              "WWW-Authenticate": `Bearer resource_metadata="${siteUrl()}/.well-known/oauth-protected-resource"`,
             },
           }
         );
@@ -469,17 +480,6 @@ http.route({
     });
   }),
 });
-
-// Base64URL encode/decode helpers (Buffer not available in Convex)
-function base64UrlEncode(str: string): string {
-  return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function base64UrlDecode(str: string): string {
-  // Add back padding
-  const padded = str + "=".repeat((4 - (str.length % 4)) % 4);
-  return atob(padded.replace(/-/g, "+").replace(/_/g, "/"));
-}
 
 // SSE endpoint for MCP (HTTP+SSE transport for backwards compatibility)
 // This follows the format that works with Claude (matching Brightdata's pattern)
@@ -668,15 +668,15 @@ http.route({
   handler: httpAction(async (ctx, request) => {
     const url = new URL(request.url);
     // Preserve any query params (like code) and redirect to auth app
-    const authAppUrl = new URL(AUTH_APP_URL);
+    const redirectUrl = new URL(authAppUrl());
     url.searchParams.forEach((value, key) => {
-      authAppUrl.searchParams.set(key, value);
+      redirectUrl.searchParams.set(key, value);
     });
 
     return new Response(null, {
       status: 302,
       headers: {
-        Location: authAppUrl.toString(),
+        Location: redirectUrl.toString(),
         ...corsHeaders,
       },
     });

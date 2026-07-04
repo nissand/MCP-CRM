@@ -5,6 +5,7 @@ import {
   getAuthContext,
   requireAdmin,
   withAudit,
+  logAudit,
   paginateResults,
   now,
 } from "../lib/utils";
@@ -71,29 +72,8 @@ export const invite = mutation({
       updatedAt: timestamp,
     };
 
-    const userId = await withAudit(
-      ctx,
-      auth,
-      "create",
-      "user",
-      "pending",
-      async () => {
-        return await ctx.db.insert("users", userData);
-      }
-    );
-
-    // Update audit log with actual ID
-    const auditLog = await ctx.db
-      .query("auditLogs")
-      .withIndex("by_entity", (q) =>
-        q.eq("entityType", "user").eq("entityId", "pending")
-      )
-      .order("desc")
-      .first();
-
-    if (auditLog) {
-      await ctx.db.patch(auditLog._id, { entityId: userId });
-    }
+    const userId = await ctx.db.insert("users", userData);
+    await logAudit(ctx, auth, "create", "user", userId);
 
     return await ctx.db.get(userId);
   },

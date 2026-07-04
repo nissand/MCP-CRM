@@ -5,6 +5,7 @@ import {
   getAuthContext,
   verifyTenantAccess,
   withAudit,
+  logAudit,
   paginateResults,
   now,
 } from "../lib/utils";
@@ -62,29 +63,8 @@ export const create = mutation({
       updatedAt: timestamp,
     };
 
-    const reminderId = await withAudit(
-      ctx,
-      auth,
-      "create",
-      "reminder",
-      "pending",
-      async () => {
-        return await ctx.db.insert("reminders", reminderData);
-      }
-    );
-
-    // Update audit log with actual ID
-    const auditLog = await ctx.db
-      .query("auditLogs")
-      .withIndex("by_entity", (q) =>
-        q.eq("entityType", "reminder").eq("entityId", "pending")
-      )
-      .order("desc")
-      .first();
-
-    if (auditLog) {
-      await ctx.db.patch(auditLog._id, { entityId: reminderId });
-    }
+    const reminderId = await ctx.db.insert("reminders", reminderData);
+    await logAudit(ctx, auth, "create", "reminder", reminderId);
 
     return await ctx.db.get(reminderId);
   },
