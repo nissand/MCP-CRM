@@ -168,7 +168,7 @@ Or add it to `.mcp.json` in your project:
 }
 ```
 
-> **Note:** tokens issued by Convex Auth expire after ~1 hour. For long-lived setups prefer the OAuth connector (Option A), which refreshes automatically.
+> **Note:** access tokens live ~1 hour. OAuth connectors (Option A) refresh automatically using the returned refresh token (opaque, rotated on use, 30-day TTL). Static Bearer setups (Option B) need a fresh token after ~1 hour.
 
 ### Option C — clients that can't send headers
 
@@ -245,7 +245,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for conventions and a walkthrough of addi
 - **JWT verification**: every inbound access token is cryptographically verified (RS256 signature against the deployment's JWKS, plus expiration/issuer/audience claims) at the HTTP boundary — see `convex/lib/jwt.ts`. Tokens signed with the wrong key, tampered payloads, and `alg=none` downgrades are all rejected with 401.
 - **Internal-only business logic**: all CRM functions are Convex `internal*` functions, so the verified HTTP layer (`convex/http.ts`) is the only public entry point — they cannot be invoked directly through the Convex client API with a forged token.
 - **Tenant isolation** is enforced in every function via `getAuthContext` + `verifyTenantAccess`; cross-tenant lookups return "not found".
-- **PKCE**: challenges are stored during the OAuth flow but verification is currently disabled in the token exchange (`convex/mcp/authCodes.ts`).
-- **Token lifetime**: tokens expire after ~1 hour. The refresh-token grant re-validates and echoes the same JWT rather than minting a new one, so OAuth clients re-authorize when the token expires.
+- **PKCE**: verified during token exchange — if the client stored an S256/plain challenge at authorize time, the corresponding `code_verifier` must match on `/oauth/token` (RFC 7636). Clients that omit PKCE fall back to the one-time-code protection (5-min TTL).
+- **Refresh tokens**: opaque, stored server-side (`oauthRefreshTokens`), rotated on every use, 30-day TTL. Each refresh mints a fresh RS256 access token (`convex/lib/jwtSigner.ts`) — OAuth connectors extend sessions indefinitely without re-prompting.
 
-Contributions addressing the remaining limitations are very welcome — see the issues tracker.
+Contributions addressing any remaining limitations are very welcome — see the issues tracker.

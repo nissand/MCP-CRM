@@ -15,6 +15,7 @@ function generateCode(): string {
 export const create = internalMutation({
   args: {
     token: v.string(),
+    sub: v.string(),
     state: v.string(),
   },
   handler: async (ctx, args) => {
@@ -26,6 +27,7 @@ export const create = internalMutation({
     await ctx.db.insert("oauthCodes", {
       code,
       token: args.token,
+      sub: args.sub,
       state: args.state,
       createdAt: now,
       expiresAt,
@@ -60,30 +62,76 @@ export const exchange = internalMutation({
       return { error: "invalid_grant", error_description: "Authorization code expired" };
     }
 
-    // Look up PKCE challenge by state (optional - skip verification for now)
+    // Look up and verify PKCE challenge (RFC 7636).
     const pkceChallenge = await ctx.db
       .query("oauthPkce")
       .withIndex("by_state", (q) => q.eq("state", codeRecord.state))
       .first();
 
-    // Clean up PKCE challenge if exists
     if (pkceChallenge) {
+      // Consume the challenge (one-time use) regardless of outcome.
       await ctx.db.delete(pkceChallenge._id);
+
+      if (pkceChallenge.expiresAt < Date.now()) {
+        return { error: "invalid_grant", error_description: "PKCE challenge expired" };
+      }
+
+      if (!args.codeVerifier) {
+        return { error: "invalid_grant", error_description: "code_verifier required" };
+      }
+
+      let expected: string;
+      if (pkceChallenge.codeChallengeMethod === "S256") {
+        const hashBuffer = await crypto.subtle.digest(
+          "SHA-256",
+          new TextEncoder().encode(args.codeVerifier),
+        );
+        expected = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)))
+          .replace(/\+/g, "-")
+          .replace(/\//g, "_")
+          .replace(/=+$/, "");
+      } else {
+        expected = args.codeVerifier;
+      }
+
+      if (expected !== pkceChallenge.codeChallenge) {
+        return { error: "invalid_grant", error_description: "Invalid code_verifier" };
+      }
     }
+    // If no challenge is stored, the client did not opt into PKCE at authorize
+    // time. OAuth 2.1 makes PKCE mandatory for public clients, but some legacy
+    // MCP clients still omit it — allow that path but rely on the one-time
+    // code + short lifetime for protection.
 
-    // Note: PKCE verification disabled for debugging
-    // Claude should still work without strict PKCE enforcement
+    // Refresh token is separate from access token so it can outlive it and
+    // be rotated on use. See mcp/refreshTokens.ts for the mint/rotate flow.
+    const refreshTokenValue = generateOpaqueToken();
+    const now = Date.now();
+    await ctx.db.insert("oauthRefreshTokens", {
+      token: refreshTokenValue,
+      sub: codeRecord.sub,
+      createdAt: now,
+      expiresAt: now + 30 * 24 * 60 * 60 * 1000, // 30 days
+    });
 
-    // Return the token
     return {
       access_token: codeRecord.token,
       token_type: "Bearer",
       expires_in: 3600,
-      refresh_token: codeRecord.token,
+      refresh_token: refreshTokenValue,
       scope: "mcp:tools",
     };
   },
 });
+
+function generateOpaqueToken(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return btoa(String.fromCharCode(...bytes))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
 
 // Clean up expired codes
 export const cleanup = internalMutation({

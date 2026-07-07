@@ -34,61 +34,6 @@ export const store = internalMutation({
   },
 });
 
-// Lookup and verify PKCE challenge during token exchange
-export const verify = internalMutation({
-  args: {
-    state: v.string(),
-    codeVerifier: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const challenge = await ctx.db
-      .query("oauthPkce")
-      .withIndex("by_state", (q) => q.eq("state", args.state))
-      .first();
-
-    if (!challenge) {
-      return { valid: true }; // No PKCE stored, allow
-    }
-
-    // Delete the challenge (one-time use)
-    await ctx.db.delete(challenge._id);
-
-    // Check if expired
-    if (challenge.expiresAt < Date.now()) {
-      return { valid: false, error: "Challenge expired" };
-    }
-
-    // If no code_verifier provided but challenge exists, fail
-    if (!args.codeVerifier) {
-      return { valid: false, error: "Code verifier required" };
-    }
-
-    // Verify the code_verifier against code_challenge
-    if (challenge.codeChallengeMethod === "S256") {
-      // SHA256 hash the verifier and base64url encode
-      const encoder = new TextEncoder();
-      const data = encoder.encode(args.codeVerifier);
-      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-      const hashArray = new Uint8Array(hashBuffer);
-      const hashBase64 = btoa(String.fromCharCode(...hashArray))
-        .replace(/\+/g, "-")
-        .replace(/\//g, "_")
-        .replace(/=+$/, "");
-
-      if (hashBase64 !== challenge.codeChallenge) {
-        return { valid: false, error: "Invalid code verifier" };
-      }
-    } else {
-      // Plain method
-      if (args.codeVerifier !== challenge.codeChallenge) {
-        return { valid: false, error: "Invalid code verifier" };
-      }
-    }
-
-    return { valid: true };
-  },
-});
-
 // Clean up expired challenges
 export const cleanup = internalMutation({
   args: {},

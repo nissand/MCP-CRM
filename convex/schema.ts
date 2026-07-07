@@ -229,11 +229,24 @@ export default defineSchema({
   oauthCodes: defineTable({
     code: v.string(), // Short authorization code
     token: v.string(), // JWT token
+    sub: v.string(), // Copied to the refresh token on exchange, used to mint fresh JWTs
     state: v.string(), // OAuth state for PKCE lookup
     createdAt: v.number(),
     expiresAt: v.number(),
   })
     .index("by_code", ["code"])
+    .index("by_expires_at", ["expiresAt"]),
+
+  // Opaque refresh tokens (rotated on each use). Live longer than the ~1h
+  // access-token TTL so clients can obtain fresh access tokens without
+  // re-prompting the user, up to `expiresAt`.
+  oauthRefreshTokens: defineTable({
+    token: v.string(),
+    sub: v.string(), // JWT sub claim, used to mint the new access token
+    createdAt: v.number(),
+    expiresAt: v.number(),
+  })
+    .index("by_token", ["token"])
     .index("by_expires_at", ["expiresAt"]),
 
   // Audit log for CUD operations

@@ -3,6 +3,7 @@ import { httpAction } from "./_generated/server";
 import { handleMCPRequest } from "./mcp/server";
 import { internal } from "./_generated/api";
 import { verifyAccessToken } from "./lib/jwt";
+import { mintAccessToken } from "./lib/jwtSigner";
 
 const http = httpRouter();
 
@@ -235,11 +236,16 @@ const handleToken = httpAction(async (ctx, request) => {
     }
   }
 
-  // Handle refresh_token grant. The refresh token is the JWT itself, so this
-  // can only extend a session while the JWT is still valid - once it expires
-  // the client must re-authorize.
+  // Handle refresh_token grant. Refresh tokens are opaque, stored in
+  // oauthRefreshTokens, rotated on every use, and live 30 days. On rotation
+  // we mint a fresh RS256 access token so clients can extend sessions
+  // indefinitely without re-authorization.
   if (body.grant_type === "refresh_token" && body.refresh_token) {
-    if (!(await verifyAccessToken(body.refresh_token))) {
+    const rotated = await ctx.runMutation(internal.mcp.refreshTokens.rotate, {
+      token: body.refresh_token,
+    });
+
+    if ("error" in rotated) {
       return new Response(
         JSON.stringify({
           error: "invalid_grant",
@@ -249,12 +255,14 @@ const handleToken = httpAction(async (ctx, request) => {
       );
     }
 
+    const accessToken = await mintAccessToken({ sub: rotated.sub });
+
     return new Response(
       JSON.stringify({
-        access_token: body.refresh_token,
+        access_token: accessToken,
         token_type: "Bearer",
         expires_in: 3600,
-        refresh_token: body.refresh_token,
+        refresh_token: rotated.newRefreshToken,
         scope: "mcp:tools",
       }),
       {
@@ -679,7 +687,8 @@ http.route({
       }
 
       // Only mint authorization codes for tokens this deployment issued
-      if (!(await verifyAccessToken(token))) {
+      const verified = await verifyAccessToken(token);
+      if (!verified || !verified.sub) {
         return new Response(
           JSON.stringify({ error: "Invalid or expired token" }),
           { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -688,6 +697,7 @@ http.route({
 
       const code = await ctx.runMutation(internal.mcp.authCodes.create, {
         token,
+        sub: verified.sub,
         state: state || "",
       });
 
